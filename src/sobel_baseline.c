@@ -190,11 +190,8 @@ int main(int argc, char **argv)
 
     elapsed = mea;
 
-    fps_avg = 0.0;
-    for(i32 i = 0; i < frame_count; i++)
-        fps_avg += samples[i];
 
-    fps_avg = (f64)frame_count / fps_avg;
+    fps_avg = (f64)frame_count / total_elapsed;
 
     mib_per_s_total = ((f64)(size << 1) * frame_count / (1024.0 * 1024.0)) / total_elapsed;
 
@@ -202,14 +199,14 @@ int main(int argc, char **argv)
     mib_per_s = ((f64)(size << 1) / (1024.0 * 1024.0)) / elapsed;
 
     //
-    fprintf(stderr, "\n%15llu bytes; %4.9lf s; %9.3lf MiB/s; %3.9lf s; %3.9lf s; %3.9lf s; %9.3lf fps; %9.3lf avg MiB/s; %3.3lf %%;\n",
+    fprintf(stderr, "%15llu bytes; %4.9lf s; %9.3lf MiB/s; %9.3lf fps; %3.9lf s; %3.9lf s; %3.9lf s; %9.3lf MiB/s; %3.3lf %%;\n",
             ((sizeof(u8) * H * W * 3) << 1) * frame_count,
             total_elapsed,
             mib_per_s_total,
+            fps_avg,
             min,
             max,
             mea,
-            fps_avg,
             mib_per_s,
             (dev * 100.0 / mea));
 
