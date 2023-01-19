@@ -43,15 +43,13 @@ if [ $1 = "v2r" ]
 then
     echo "Converting from mp4 to raw video file"
 
-    # ffmpeg -i $input -vf format=rgb24 -f rawvideo -y $output
-    ffmpeg -i $input -f image2pipe -vcodec rawvideo -pix_fmt rgb24 - >> $output
+    ffmpeg -i $input -f image2pipe -vcodec rawvideo -pix_fmt rgb24 - > $output
 else
     if [ $1 = "r2v" ]
     then
-	    echo "Converting from raw video to mp4"
+	echo "Converting from raw video to mp4"
 	
-    ffmpeg -f rawvideo -pix_fmt rgb24 -s 1280x720 -r 30 -i $input -an -f mp4 -y $output
-	    # ffmpeg -i $input -f rawvideo -vcodec rawvideo -pix_fmt rgb24 -s 1280x720 -r 30 -to -q:a 5 -b:v 2303k -an -vcodec mpeg4 -f mp4 -y $output
+	cat $input | ffmpeg -y -f rawvideo -vcodec rawvideo -pix_fmt rgb24 -s 1280x720 -r 25 -i - -f mp4 -q:v 5 -an -vcodec mpeg4 $output
     else
     	echo "Error: unknown convertion parameter!"
 	exit 1

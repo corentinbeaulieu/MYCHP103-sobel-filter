@@ -196,13 +196,13 @@ int main(int argc, char **argv)
 
     fps_avg = (f64)frame_count / fps_avg;
 
-    mib_per_s_total = ((f64)(size << 1) * frame_count / (1024.0 * 1024.0))     / total_elapsed;
+    mib_per_s_total = ((f64)(size << 1) * frame_count / (1024.0 * 1024.0)) / total_elapsed;
 
     //2 arrays (input & output)
     mib_per_s = ((f64)(size << 1) / (1024.0 * 1024.0)) / elapsed;
 
     //
-    fprintf(stderr, "\n%12llu bytes; %4.9lf s; %15.3lf MiB/s; %3.9lf s; %3.9lf s; %3.9lf s; %12.3lf fps; %15.3lf avg MiB/s; %3.3lf %%;\n",
+    fprintf(stderr, "\n%15llu bytes; %4.9lf s; %9.3lf MiB/s; %3.9lf s; %3.9lf s; %3.9lf s; %9.3lf fps; %9.3lf avg MiB/s; %3.3lf %%;\n",
             ((sizeof(u8) * H * W * 3) << 1) * frame_count,
             total_elapsed,
             mib_per_s_total,

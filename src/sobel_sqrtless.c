@@ -110,7 +110,7 @@ i16 convolve_7x7_no_zero(const u8 *restrict m, const i8 *restrict f,const u64 fh
 }
 
 //
-void sobel_grey(const u8 *restrict cframe, u8 *restrict oframe, const u16 threshold)
+void sobel_sqrtless(const u8 *restrict cframe, u8 *restrict oframe, const u16 threshold)
 {
     i16 gx, gy;
     u8 res = 0;
@@ -124,8 +124,8 @@ void sobel_grey(const u8 *restrict cframe, u8 *restrict oframe, const u16 thresh
                    1,  2,  1 }; 
 
     //
-    for (u64 i = 0; i < (H - 3); i++)
-        for (u64 j = 0; j < ((W) - 3); j++)
+    for (u64 i = 0; i < (H - 7); i++)
+        for (u64 j = 0; j < ((W) - 7); j++)
         {
             gx = convolve_7x7_no_zero(&cframe[INDEX(i, j, W)], f1, 3, 2);
             gy = convolve_7x7_no_zero(&cframe[INDEX(i, j, W)], f2, 2, 3);
@@ -199,7 +199,7 @@ int main(int argc, char **argv)
             //Start 
             clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
 
-            sobel_grey(grey_frame, oframe, 100);
+            sobel_sqrtless(grey_frame, oframe, 100);
 
             //Stop
             clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
@@ -272,7 +272,7 @@ int main(int argc, char **argv)
     mib_per_s = ((f64)(size << 1) / (1024.0 * 1024.0)) / elapsed;
 
     //
-    fprintf(stderr, "\n%12llu bytes; %4.9lf s; %15.3lf MiB/s; %3.9lf s; %3.9lf s; %3.9lf s; %12.3lf fps; %15.3lf avg MiB/s; %3.3lf %%;\n",
+    fprintf(stderr, "\n%15llu bytes; %4.9lf s; %9.3lf MiB/s; %3.9lf s; %3.9lf s; %3.9lf s; %9.3lf fps; %9.3lf avg MiB/s; %3.3lf %%;\n",
             ((sizeof(u8) * H * W * 3) << 1) * frame_count,
             total_elapsed,
             mib_per_s_total,
