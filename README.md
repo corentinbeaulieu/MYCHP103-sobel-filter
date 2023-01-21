@@ -2,10 +2,10 @@
 
 This repository contains the work asked for the Parallel Architecture Project on a sobel filter.
 
-The *rapport.pdf* and all the code correspond to the first part which consist of a optimisation of a sobel filtering video processing application.
-All the different changed and results can be find in the report called *rapport.pdf*
+The *report.pdf* and all the code correspond to the first part which consist of a optimisation of a sobel filtering video processing application.
+All the different changed and results can be find in the report called *report.pdf* (written in french).
 
-The *paper.pdf* and *résumé.pdf* correspond to the second part, a shot summary of a scientifical paper about a custom extended sobel filter.
+The *paper.pdf* and *summary.pdf* (written in french) correspond to the second part, a shot summary of a scientifical paper about a custom extended sobel filter.
 
 ## Usage
 
