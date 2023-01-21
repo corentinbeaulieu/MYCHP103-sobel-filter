@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <emmintrin.h>
+#include <unistd.h>
 
 //
 #include "common.h"
@@ -97,107 +98,112 @@ int main(int argc, char **argv)
     //
     if (argc < 3)
         return printf("Usage: %s [raw input file] [raw output file]\n", argv[0]), 1;
-
+    //
     struct timespec total1, total2;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &total1);
-    //Size of a frame
-    u64 size = sizeof(u8) * H * W * 3;
 
     //
     f64 elapsed = 0.0;
     f64 mib_per_s = 0.0;
     struct timespec t1, t2;
     f64 samples[MAX_SAMPLES];
+
     //
     u64 nb_bytes = 1, frame_count = 0, samples_count = 0;
 
-    //
-    u8 *cframe = _mm_malloc(size, 32);
-    u8 *oframe = _mm_malloc(size, 32);
-    u8 *grey_frame = NULL;
+    f64 total_elapsed;
 
     //
-    FILE *fpi = fopen(argv[1], "rb"); 
-    FILE *fpo = fopen(argv[2], "wb");
+    do {
 
-    //
-    if (!fpi)
-        return printf("Error: cannot open file '%s'\n", argv[1]), 2;
+        clock_gettime(CLOCK_MONOTONIC_RAW, &total1);
 
-    //
-    if (!fpo)
-        return printf("Error: cannot open file '%s'\n", argv[2]), 2;
-
-    //Read & process video frames
-    while ((nb_bytes = fread(cframe, sizeof(u8), H * W * 3, fpi)))
-    {
         //
-        grey_frame = grayscale_weighted(cframe);
-        if(grey_frame == NULL) {
-            _mm_free(cframe);
-            _mm_free(oframe);
+        u8 *cframe = _mm_malloc(FRAME_SIZE, 32);
+        u8 *oframe = _mm_malloc(FRAME_SIZE, 32);
+        u8 *grey_frame = NULL;
+
+        //
+        FILE *fpi = fopen(argv[1], "rb"); 
+        FILE *fpo = fopen(argv[2], "wb");
+
+        //
+        if (!fpi)
+            return printf("Error: cannot open file '%s'\n", argv[1]), 2;
+
+        //
+        if (!fpo)
+            return printf("Error: cannot open file '%s'\n", argv[2]), 2;
+
+        //Read & process video frames
+        while ((nb_bytes = fread(cframe, sizeof(u8), H * W * 3, fpi)))
+        {
+            //
+            grey_frame = grayscale_weighted(cframe);
+            if(grey_frame == NULL) {
+                _mm_free(cframe);
+                _mm_free(oframe);
+
+                //
+                fclose(fpi);
+                fclose(fpo);
+
+                return 1;
+            };
+
+            do
+            {
+
+                //Start 
+                clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+
+                sobel_grey(grey_frame, oframe, 100.0);
+
+                //Stop
+                clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
+
+                //Nano seconds
+                elapsed = (f64)(t2.tv_sec - t1.tv_sec) + (f64) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
+
+            }
+            while (elapsed <= 0.0);
+
+            //Seconds
+
+            //2 arrays
+            mib_per_s = ((f64)(nb_bytes << 1) / (1024.0 * 1024.0)) / elapsed;
 
             //
-            fclose(fpi);
-            fclose(fpo);
+            if (samples_count < MAX_SAMPLES)
+                samples[samples_count++] = elapsed;
 
-            return 1;
-        };
+            //frame number; size in Bytes; elapsed ns; elapsed s; bytes per second
+            fprintf(stdout, "%20llu; %20llu bytes; %3.9lf s; %15.3lf MiB/s\n", frame_count, nb_bytes << 1, elapsed, mib_per_s);
 
-        do
-        {
+            // Write this frame to the output pipe
+            fwrite(oframe, sizeof(u8), H * W * 3, fpo);
 
-            //Start 
-            clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+            //
+            frame_count++;
 
-            sobel_grey(grey_frame, oframe, 100.0);
-
-            //Stop
-            clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
-
-            //Nano seconds
-            elapsed = (f64)(t2.tv_sec - t1.tv_sec) + (f64) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
-
+            free(grey_frame);
         }
-        while (elapsed <= 0.0);
-
-        //Seconds
-
-        //2 arrays
-        mib_per_s = ((f64)(nb_bytes << 1) / (1024.0 * 1024.0)) / elapsed;
 
         //
-        if (samples_count < MAX_SAMPLES)
-            samples[samples_count++] = elapsed;
-
-        //frame number; size in Bytes; elapsed ns; elapsed s; bytes per second
-        fprintf(stdout, "%20llu; %20llu bytes; %3.9lf s; %15.3lf MiB/s\n", frame_count, nb_bytes << 1, elapsed, mib_per_s);
-
-        // Write this frame to the output pipe
-        fwrite(oframe, sizeof(u8), H * W * 3, fpo);
+        _mm_free(cframe);
+        _mm_free(oframe);
 
         //
-        frame_count++;
+        fclose(fpi);
+        fclose(fpo);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &total2);
 
-        free(grey_frame);
-    }
-
-    //
-    _mm_free(cframe);
-    _mm_free(oframe);
+        total_elapsed = (f64)(total2.tv_sec - total1.tv_sec) + (f64)(total2.tv_nsec - total1.tv_nsec) * 1e-9;
+    } while(total_elapsed <= 0);
 
     //
-    fclose(fpi);
-    fclose(fpo);
-
+    f64 tot_mea,tot_mib_per_s, min, max, avg, mea, dev, fps_avg;
     //
     sort(samples, samples_count);
-
-    clock_gettime(CLOCK_MONOTONIC_RAW, &total2);
-
-    //
-    f64 total_elapsed, mib_per_s_total,min, max, avg, mea, dev, fps_avg;
-    total_elapsed = (f64)(total2.tv_sec - total1.tv_sec) + (f64)(total2.tv_nsec - total1.tv_nsec) * 1e-9;
 
     //
     mea = mean(samples, samples_count);
@@ -213,16 +219,16 @@ int main(int argc, char **argv)
 
     fps_avg = (f64)frame_count / total_elapsed;
 
-    mib_per_s_total = ((f64)(size << 1) * frame_count / (1024.0 * 1024.0))     / total_elapsed;
+    tot_mib_per_s = ((f64)(FRAME_SIZE << 1) * frame_count / (1024.0 * 1024.0)) / total_elapsed;
 
     //2 arrays (input & output)
-    mib_per_s = ((f64)(size << 1) / (1024.0 * 1024.0)) / elapsed;
+    mib_per_s = ((f64)(FRAME_SIZE << 1) / (1024.0 * 1024.0)) / elapsed;
 
     //
     fprintf(stderr, "%15llu bytes; %4.9lf s; %9.3lf MiB/s; %9.3lf fps; %3.9lf s; %3.9lf s; %3.9lf s; %9.3lf MiB/s; %3.3lf %%;\n",
-            ((sizeof(u8) * H * W * 3) << 1) * frame_count,
+            (FRAME_SIZE * frame_count) << 1,
             total_elapsed,
-            mib_per_s_total,
+            tot_mib_per_s,
             fps_avg,
             min,
             max,
@@ -232,3 +238,4 @@ int main(int argc, char **argv)
 
     return  0;
 }
+

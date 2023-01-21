@@ -32,3 +32,4 @@ sobel_parallel: $(DIRSRC)/sobel_parallel.c $(DIRSRC)/common.c
 
 clean:
 	rm -Rf *~ sobel_* 
+	rm -f *.dat *.png

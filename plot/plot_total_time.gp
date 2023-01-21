@@ -25,5 +25,5 @@ set bars front
 
 set key left top
 
-plot "measures.dat" u 3:($10/100*$3):xtic(1) notitle
+plot "measures.dat" u 2:($5/100*$2):xtic(1) notitle
 

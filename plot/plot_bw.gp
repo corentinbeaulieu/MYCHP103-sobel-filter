@@ -1,6 +1,6 @@
 
 set terminal png size 1280,720
-set output "bw_per_frame.png"
+set output "bw_kernel.png"
 
 set grid y
 
@@ -25,5 +25,5 @@ set bars front
 
 set key left top
 
-plot "measures.dat" u 9:($10/100*$9):xtic(1) notitle
+plot "measures.dat" u 6:($7/100*$6):xtic(1) notitle
 

@@ -154,172 +154,185 @@ int main(int argc, char **argv)
     if (argc < 3)
         return printf("Usage: %s [raw input file] [raw output file]\n", argv[0]), 1;
 
+    //
     struct timespec total1, total2;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &total1);
-    //Size of a frame
-    u64 size = sizeof(u8) * H * W * 3;
 
     //
     f64 elapsed = 0.0;
     f64 mib_per_s = 0.0;
     struct timespec t1, t2;
     f64 samples[MAX_SAMPLES];
+
     //
     u64 nb_bytes = 1, frame_count = 0, samples_count = 0;
 
-    //
-    u8 *cframe = NULL; 
-    u8 *oframe = NULL; 
-    u8 *grey_frame = NULL;
+    f64 total_elapsed;
 
     //
-    int fpi = open(argv[1], O_RDONLY | O_LARGEFILE); 
+    do {
 
-    struct stat fileStat;
-    memset(&fileStat, 0, sizeof(struct stat));
-    fstat(fpi, &fileStat);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &total1);
 
-    u64 treated = 0;
-    const u64 fileChunk = size * 360; // ~ 1GB
-
-    int fpo = open(argv[2], O_RDWR | O_CREAT | O_LARGEFILE, 0664);
-
-    //
-    if (!fpi)
-        return printf("Error: cannot open file '%s'\n", argv[1]), 2;
-
-    //
-    if (!fpo)
-        return printf("Error: cannot open file '%s'\n", argv[2]), 2;
-
-    // Avoid Bus error
-    lseek(fpo, fileStat.st_size-1, SEEK_SET);
-    write(fpo, "", 1);
-
-    //Read & process video frames
-    while (treated + fileChunk <= fileStat.st_size)
-    {
-
-        cframe = mmap(NULL, fileChunk, PROT_READ, MAP_PRIVATE, fpi, treated);
-        if(cframe == NULL) {
-            perror("cframe mmap");
-            return 3;
-        }
         //
-        grey_frame = grayscale_weighted(cframe, 360);
+        u8 *cframe = NULL; 
+        u8 *oframe = NULL; 
+        u8 *grey_frame = NULL;
 
-        munmap(cframe, fileChunk);
-        cframe = NULL;
-        if(grey_frame == NULL) {
-            close(fpi);
-            close(fpo);
-
-            return 1;
-        };
-
-        oframe = mmap(NULL, fileChunk, PROT_READ | PROT_WRITE, MAP_SHARED, fpo, treated);
-        if(oframe == NULL) {
-            perror("oframe mmap");
-            return 3;
-        }
-
-        for(u64 i = 0; i < 360; i++) {
-            do
-            {
-
-                //Start 
-                clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
-
-                sobel_sqrtless(&grey_frame[i*size/3], &oframe[i*size], 100);
-
-                //Stop
-                clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
-
-                //Nano seconds
-                elapsed = (f64)(t2.tv_sec - t1.tv_sec) + (f64) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
-
-            }
-            while (elapsed <= 0.0);
-
-            samples[samples_count++] = elapsed;
-
-            //
-            frame_count++;
-        }
-
-        free(grey_frame);
-        munmap(oframe, fileChunk);
-        oframe = NULL;
-        treated += fileChunk;
-    }
-
-    if(treated < fileStat.st_size) {
-        const u64 remaining = fileStat.st_size - treated;
-        cframe = mmap(NULL, remaining, PROT_READ, MAP_PRIVATE, fpi, treated);
-        if(cframe == NULL) {
-            perror("cframe mmap");
-            return 3;
-        }
         //
-        grey_frame = grayscale_weighted(cframe, remaining / size );
+        int fpi = open(argv[1], O_RDONLY | O_LARGEFILE); 
 
-        munmap(cframe, remaining);
-        cframe = NULL;
-        if(grey_frame == NULL) {
-            close(fpi);
-            close(fpo);
+        struct stat fileStat;
+        memset(&fileStat, 0, sizeof(struct stat));
+        fstat(fpi, &fileStat);
 
-            return 1;
-        };
+        u64 treated = 0;
 
-        oframe = mmap(NULL, remaining, PROT_READ | PROT_WRITE, MAP_SHARED, fpo, treated);
-        if(oframe == NULL) {
-            perror("oframe mmap");
-            return 3;
-        }
+        int fpo = open(argv[2], O_RDWR | O_CREAT | O_LARGEFILE, 0664);
 
-        for(u64 i = 0; i < remaining / size; i++) {
-            do
-            {
+        //
+        if (fpi == -1)
+            return printf("Error: cannot open file '%s'\n", argv[1]), 2;
 
-                //Start 
-                clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+        //
+        if (fpo == -1)
+            return printf("Error: cannot open file '%s'\n", argv[2]), 2;
 
-                sobel_sqrtless(&grey_frame[i*size/3], &oframe[i*size], 100);
+        // Avoid Bus error
+        lseek(fpo, fileStat.st_size-1, SEEK_SET);
+        write(fpo, "", 1);
 
-                //Stop
-                clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
+        //Read & process video frames
+        while (treated + FILE_CHUNK <= fileStat.st_size)
+        {
 
-                //Nano seconds
-                elapsed = (f64)(t2.tv_sec - t1.tv_sec) + (f64) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
-
+            cframe = mmap(NULL, FILE_CHUNK, PROT_READ, MAP_PRIVATE, fpi, treated);
+            if(cframe == MAP_FAILED) {
+                perror("cframe mmap");
+                return 3;
             }
-            while (elapsed <= 0.0);
-
-            samples[samples_count++] = elapsed;
-
             //
-            frame_count++;
-            treated += size;
+            grey_frame = grayscale_weighted(cframe, FILE_CHUNK/FRAME_SIZE);
+
+            munmap(cframe, FILE_CHUNK);
+            cframe = NULL;
+            if(grey_frame == NULL) {
+                close(fpi);
+                close(fpo);
+
+                return 1;
+            };
+
+            oframe = mmap(NULL, FILE_CHUNK, PROT_READ | PROT_WRITE, MAP_SHARED, fpo, treated);
+            if(oframe == MAP_FAILED) {
+                perror("oframe mmap");
+                return 3;
+            }
+
+            for(u64 i = 0; i < FILE_CHUNK/FRAME_SIZE; i++) {
+                do
+                {
+
+                    //Start 
+                    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+
+                    sobel_sqrtless(&grey_frame[i*FRAME_SIZE/3], &oframe[i*FRAME_SIZE], 100);
+
+                    //Stop
+                    clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
+
+                    //Nano seconds
+                    elapsed = (f64)(t2.tv_sec - t1.tv_sec) + (f64) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
+
+                }
+                while (elapsed <= 0.0);
+
+                //
+                if(samples_count < MAX_SAMPLES)
+                    samples[samples_count++] = elapsed;
+
+                //
+                frame_count++;
+            }
+
+            free(grey_frame);
+            munmap(oframe, FILE_CHUNK);
+            oframe = NULL;
+            treated += FILE_CHUNK;
         }
 
-        free(grey_frame);
-        munmap(oframe, remaining);
-        oframe = NULL;
-    }
+        if(treated < fileStat.st_size) {
+
+            const u64 remaining = fileStat.st_size - treated;
+
+            cframe = mmap(NULL, remaining, PROT_READ, MAP_PRIVATE, fpi, treated);
+
+            if(cframe == MAP_FAILED) {
+                perror("cframe mmap");
+                return 3;
+            }
+            //
+            grey_frame = grayscale_weighted(cframe, remaining / FRAME_SIZE );
+
+            munmap(cframe, remaining);
+            cframe = NULL;
+            if(grey_frame == NULL) {
+                close(fpi);
+                close(fpo);
+
+                return 1;
+            };
+
+            oframe = mmap(NULL, remaining, PROT_READ | PROT_WRITE, MAP_SHARED, fpo, treated);
+            if(oframe == MAP_FAILED) {
+                perror("oframe mmap");
+                return 3;
+            }
+
+            for(u64 i = 0; i < remaining / FRAME_SIZE; i++) {
+                do
+                {
+
+                    //Start 
+                    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+
+                    sobel_sqrtless(&grey_frame[i*FRAME_SIZE/3], &oframe[i*FRAME_SIZE], 100);
+
+                    //Stop
+                    clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
+
+                    //Nano seconds
+                    elapsed = (f64)(t2.tv_sec - t1.tv_sec) + (f64) (t2.tv_nsec - t1.tv_nsec) * 1e-9;
+
+                }
+                while (elapsed <= 0.0);
+
+                samples[samples_count++] = elapsed;
+
+                //
+                frame_count++;
+                treated += FRAME_SIZE;
+            }
+
+            free(grey_frame);
+            munmap(oframe, remaining);
+            oframe = NULL;
+        }
+
+        //
+        close(fpi);
+        close(fpo);
+
+        //
+        clock_gettime(CLOCK_MONOTONIC_RAW, &total2);
+
+        total_elapsed = (f64)(total2.tv_sec - total1.tv_sec) + (f64)(total2.tv_nsec - total1.tv_nsec) * 1e-9;
+    } while(total_elapsed <= 0);
 
     //
-    close(fpi);
-    close(fpo);
+    f64 tot_mea,tot_mib_per_s, min, max, avg, mea, dev, fps_avg;
 
     //
     sort(samples, samples_count);
-
-    clock_gettime(CLOCK_MONOTONIC_RAW, &total2);
-
-    //
-    f64 total_elapsed, mib_per_s_total,min, max, avg, mea, dev, fps_avg;
-    total_elapsed = (f64)(total2.tv_sec - total1.tv_sec) + (f64)(total2.tv_nsec - total1.tv_nsec) * 1e-9;
 
     //
     mea = mean(samples, samples_count);
@@ -335,16 +348,16 @@ int main(int argc, char **argv)
 
     fps_avg = (f64)frame_count / total_elapsed;
 
-    mib_per_s_total = ((f64)(size << 1) * frame_count / (1024.0 * 1024.0)) / total_elapsed;
+    tot_mib_per_s = ((f64)(FRAME_SIZE << 1) * frame_count / (1024.0 * 1024.0)) / total_elapsed;
 
     //2 arrays (input & output)
-    mib_per_s = ((f64)(size << 1) / (1024.0 * 1024.0)) / elapsed;
+    mib_per_s = ((f64)(FRAME_SIZE << 1) / (1024.0 * 1024.0)) / elapsed;
 
     //
     fprintf(stderr, "%15llu bytes; %4.9lf s; %9.3lf MiB/s; %9.3lf fps; %3.9lf s; %3.9lf s; %3.9lf s; %9.3lf MiB/s; %3.3lf %%;\n",
-            ((sizeof(u8) * H * W * 3) << 1) * frame_count,
+            (FRAME_SIZE * frame_count) << 1,
             total_elapsed,
-            mib_per_s_total,
+            tot_mib_per_s,
             fps_avg,
             min,
             max,
@@ -354,3 +367,4 @@ int main(int argc, char **argv)
 
     return  0;
 }
+

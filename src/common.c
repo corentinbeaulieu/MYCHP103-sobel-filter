@@ -39,7 +39,7 @@ f64 stddev(f64 *a, u64 n)
     for (u64 i = 0; i < n; i++)
         d += (a[i] - m) * (a[i] - m);
 
-    d /= (f64)(n - 1);
+    d /= (f64) n;
 
     return sqrt(d); 
 }

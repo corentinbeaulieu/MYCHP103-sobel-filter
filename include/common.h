@@ -6,6 +6,13 @@
 #define MAX_SAMPLES 1000
 
 //
+#define FRAME_SIZE (H*W*3)
+#define FILE_CHUNK (FRAME_SIZE*360)
+
+//
+#define NB_THREADS 4
+
+//
 #define INDEX(row, col, n) (((row) * (n)) + (col))
 
 //
