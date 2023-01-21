@@ -1,0 +1,7 @@
+#      name;  avg total time;         bandwidth total;                 fps;   stddev tot;            bandwidth kernel;    stddev;
+   baseline;  29.001413926 s;            65.832 MiB/s;          12.483 fps;      7.751 %;               102.382 MiB/s;    .373 %;
+compilflags;  14.471190191 s;           131.669 MiB/s;          24.968 fps;      6.150 %;               776.188 MiB/s;   1.183 %;
+       grey;  14.408630324 s;           132.186 MiB/s;          25.066 fps;      5.573 %;              1805.371 MiB/s;   1.444 %;
+   sqrtless;  14.251506588 s;           134.074 MiB/s;          25.424 fps;      8.020 %;              7170.271 MiB/s;   4.886 %;
+         io;   1.263193479 s;          1502.961 MiB/s;         285.006 fps;          0 %;              3605.091 MiB/s;    .658 %;
+   parallel;    .887854550 s;          2138.231 MiB/s;         405.472 fps;          0 %;              3141.430 MiB/s;   1.119 %;
